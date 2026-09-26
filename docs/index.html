@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Kyle Fraund">
+<meta name="dcterms.date" content="2026-09-25">
+
+<title>PCA Image Compressor — app design</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="index_files/libs/clipboard/clipboard.min.js"></script>
+<script src="index_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="index_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="index_files/libs/quarto-html/popper.min.js"></script>
+<script src="index_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="index_files/libs/quarto-html/anchor.min.js"></script>
+<link href="index_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="index_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="index_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="index_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="index_files/libs/bootstrap/bootstrap-67270d1595a62d14f123c043d4fb2f18.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#what-the-app-does" id="toc-what-the-app-does" class="nav-link active" data-scroll-target="#what-the-app-does">What the app does</a></li>
+  <li><a href="#the-mockup" id="toc-the-mockup" class="nav-link" data-scroll-target="#the-mockup">The mockup</a></li>
+  <li><a href="#layout-and-why-its-laid-out-that-way" id="toc-layout-and-why-its-laid-out-that-way" class="nav-link" data-scroll-target="#layout-and-why-its-laid-out-that-way">Layout, and why it’s laid out that way</a>
+  <ul class="collapse">
+  <li><a href="#controls-left-results-right" id="toc-controls-left-results-right" class="nav-link" data-scroll-target="#controls-left-results-right">Controls left, results right</a></li>
+  <li><a href="#the-slider-sits-right-on-top-of-the-numbers-it-moves" id="toc-the-slider-sits-right-on-top-of-the-numbers-it-moves" class="nav-link" data-scroll-target="#the-slider-sits-right-on-top-of-the-numbers-it-moves">The slider sits right on top of the numbers it moves</a></li>
+  <li><a href="#comparing-the-two-images" id="toc-comparing-the-two-images" class="nav-link" data-scroll-target="#comparing-the-two-images">Comparing the two images</a></li>
+  <li><a href="#the-error-curve-goes-last" id="toc-the-error-curve-goes-last" class="nav-link" data-scroll-target="#the-error-curve-goes-last">The error curve goes last</a></li>
+  <li><a href="#what-the-app-tells-you-back" id="toc-what-the-app-tells-you-back" class="nav-link" data-scroll-target="#what-the-app-tells-you-back">What the app tells you back</a></li>
+  </ul></li>
+  <li><a href="#how-its-built" id="toc-how-its-built" class="nav-link" data-scroll-target="#how-its-built">How it’s built</a></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">PCA Image Compressor — app design</h1>
+<p class="subtitle lead">Part 3: what the app does, how it is laid out, and why</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Kyle Fraund </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 25, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-the-app-does" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-app-does">What the app does</h2>
+<p>You upload an image of your own, drag one slider to pick how many principal components <span class="math inline">\(k\)</span> to keep, and immediately see your picture rebuilt from just those <span class="math inline">\(k\)</span> components sitting next to the original. Under the slider the app tells you what the choice cost, the Frobenius error <span class="math inline">\(\lVert X - X_{(k)}\rVert_F\)</span>, and what it bought, the storage ratio <span class="math inline">\((n + p)k \,/\, np\)</span>. The whole idea is to turn <span class="math inline">\(k\)</span> from an abstract number into something you can feel: pull the slider down and watch a face dissolve into horizontal banding, push it back up and watch it return, while the two numbers on the left move in opposite directions.</p>
+<p>It takes PNG, JPEG or a raw CSV matrix, so the same files used in the static analysis can be dropped straight in. Colour images get converted to grayscale with Rec. 601 luma weights, and anything bigger than 320 px on its long side is downsampled, because the eigendecomposition of <span class="math inline">\(X'X\)</span> is <span class="math inline">\(O(p^3)\)</span> and a full-resolution photo would make the slider stutter.</p>
+</section>
+<section id="the-mockup" class="level2">
+<h2 class="anchored" data-anchor-id="the-mockup">The mockup</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="mockup.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption>Mockup of the PCA Image Compressor. The two image panels are illustrations made with the real compression code; the right one is a genuine rank-25 reconstruction of the left.</figcaption>
+</figure>
+</div>
+</section>
+<section id="layout-and-why-its-laid-out-that-way" class="level2">
+<h2 class="anchored" data-anchor-id="layout-and-why-its-laid-out-that-way">Layout, and why it’s laid out that way</h2>
+<section id="controls-left-results-right" class="level3">
+<h3 class="anchored" data-anchor-id="controls-left-results-right">Controls left, results right</h3>
+<p>Everything you do lives in one narrow column on the left, numbered one to three down the page: pick a file, pick <span class="math inline">\(k\)</span>, read the cost. Everything you look at lives in the wide area on the right. The split is deliberate. The images are the reason the app exists and they need the horizontal room, while the controls are small and are easier to find when they’re collected in one predictable place rather than scattered around the pictures.</p>
+<p>The order also matches the actual dependency chain. You can’t choose <span class="math inline">\(k\)</span> before you have an image, and the cost figures mean nothing until you’ve chosen <span class="math inline">\(k\)</span>, so reading the sidebar top to bottom is the same thing as using the app.</p>
+</section>
+<section id="the-slider-sits-right-on-top-of-the-numbers-it-moves" class="level3">
+<h3 class="anchored" data-anchor-id="the-slider-sits-right-on-top-of-the-numbers-it-moves">The slider sits right on top of the numbers it moves</h3>
+<p>The <span class="math inline">\(k\)</span> slider is the only control anyone touches repeatedly, so it gets the biggest type in the sidebar and a block of its own. More importantly, the three cost figures sit immediately underneath it rather than off in a corner of the main panel. Those figures are the feedback for the slider, and putting half a screen between cause and effect would force you to watch two places at once while dragging. The current value is printed as a number instead of being left for you to guess from the knob position, because “which <span class="math inline">\(k\)</span> was that?” is exactly what you’ll want to know the moment you find a setting you like.</p>
+<p>The slider’s maximum isn’t a fixed constant. It’s <span class="math inline">\(p\)</span>, the number of columns in whatever you uploaded, and the endpoint labels say so. A slider that let you ask for <span class="math inline">\(k &gt; p\)</span> would be offering a state the mathematics doesn’t have.</p>
+</section>
+<section id="comparing-the-two-images" class="level3">
+<h3 class="anchored" data-anchor-id="comparing-the-two-images">Comparing the two images</h3>
+<p>The default is plain side by side at the same display size, original on the left, reconstruction on the right, because left-to-right reading order already means before-and-after. Both panels use the same grayscale range, taken from the original, so any difference you see is a real difference in the pixels rather than an artefact of two independent colour scales. That matters more than it sounds: a rank-<span class="math inline">\(k\)</span> reconstruction can overshoot outside the original range, and scaling each panel on its own would quietly hide it.</p>
+<p>Side by side is the right default because it’s the least surprising, but it’s weak on low-contrast differences. At <span class="math inline">\(k = 40\)</span> the two panels look identical even though they aren’t. So three other comparison modes sit as a row of chips directly under the images:</p>
+<ul>
+<li>Swipe overlay, the two images stacked with a draggable vertical divider. Best for finding where detail was lost, because your eye compares across one edge instead of across a gap.</li>
+<li>Difference map, <span class="math inline">\(\lvert X - X_{(k)} \rvert\)</span> drawn as its own image. This turns the Frobenius error from a single number into a picture of where the error actually is, which is usually edges and texture.</li>
+<li>Sync zoom, panning and zooming both panels together, for looking at a face or some patch of fine detail at 1:1.</li>
+</ul>
+<p>They’re chips rather than a dropdown so all four options are visible at once. There are few enough that hiding them behind a menu would cost more than the row of space it saves.</p>
+</section>
+<section id="the-error-curve-goes-last" class="level3">
+<h3 class="anchored" data-anchor-id="the-error-curve-goes-last">The error curve goes last</h3>
+<p>Below the images, full width, is Error(<span class="math inline">\(k\)</span>) for every <span class="math inline">\(k\)</span> from 1 to <span class="math inline">\(p\)</span> with a dashed marker at wherever you currently are. This answers the one question the side-by-side view can’t: am I on the steep part or the flat part? Someone who has dragged to <span class="math inline">\(k = 25\)</span> can see at a glance that the curve went nearly flat around <span class="math inline">\(k = 10\)</span> and that another 50 components would buy almost nothing. The marker tracks the slider live, which makes the curve feel like part of the control rather than a chart off to one side.</p>
+<p>It’s at the bottom because it’s interpretive rather than primary. The pictures answer “does this look acceptable”; the curve answers “was that a sensible place to stop”.</p>
+</section>
+<section id="what-the-app-tells-you-back" class="level3">
+<h3 class="anchored" data-anchor-id="what-the-app-tells-you-back">What the app tells you back</h3>
+<ol type="1">
+<li>Immediately: the reconstructed panel and the curve marker both update on the same drag. There’s no Compute button, because the decomposition happens once when the file lands, so changing <span class="math inline">\(k\)</span> is a single matrix product and is fast enough to feel continuous.</li>
+<li>On upload: a green line naming the file and its dimensions after downsampling, so nobody is left wondering why <span class="math inline">\(p\)</span> is 180 when their photo was 1400 px wide.</li>
+<li>During the slow bit: a progress indicator while <span class="math inline">\(X'X\)</span> is decomposed, which is the only step with a noticeable wait.</li>
+<li>In numbers: error given both absolutely and as a percentage of <span class="math inline">\(\lVert X \rVert_F\)</span>, since a bare Frobenius norm means nothing without a scale, and the compression ratio given as a percentage plus a filled bar so the trade-off reads at a glance instead of having to be parsed out of four figures.</li>
+<li>When something breaks: a plain-language banner in the main panel for a wrong file type, a non-numeric CSV or missing values, rather than a red R traceback.</li>
+</ol>
+</section>
+</section>
+<section id="how-its-built" class="level2">
+<h2 class="anchored" data-anchor-id="how-its-built">How it’s built</h2>
+<p>Shiny, deployed to shinyapps.io. It calls the same <code>pca_compress()</code> function that produced the static analysis, sourced rather than copied, so there’s only ever one implementation of the algebra. The eigendecomposition is cached per upload instead of being redone on every slider tick, which is what makes continuous dragging possible at all.</p>
+<p>The live app: <a href="https://kal311.shinyapps.io/pca-image-compression/" class="uri">https://kal311.shinyapps.io/pca-image-compression/</a></p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

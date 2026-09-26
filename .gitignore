@@ -1,0 +1,19 @@
+.Rproj.user/
+.Rhistory
+.RData
+*.Rproj
+/.quarto/
+# (no wildcard *_files/ here: it would also match docs/index_files/,
+# which holds the CSS GitHub Pages needs)
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# generated only to be screenshotted; the committed artefact is mockup.png
+src/mockup.standalone.html
+
+**/*.quarto_ipynb
+
+# tooling artefacts, not part of the project
+.claude-flow/
+.quarto/

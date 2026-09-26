@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PCA Image Compressor — mockup</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #eef1f5;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #1f2630;
+  }
+  .frame { width: 1180px; margin: 24px auto; background: #fff;
+           border: 1px solid #ccd3dc; border-radius: 10px; overflow: hidden;
+           box-shadow: 0 6px 24px rgba(20,30,50,.10); }
+
+  
+  .chrome { display: flex; align-items: center; gap: 8px;
+            background: #f4f6f9; border-bottom: 1px solid #dde3ea; padding: 9px 14px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .url { flex: 1; margin-left: 10px; background: #fff; border: 1px solid #dde3ea;
+         border-radius: 5px; padding: 3px 10px; font-size: 12px; color: #6b7684; }
+
+  header { padding: 18px 26px 14px; border-bottom: 1px solid #edf0f4; }
+  header h1 { margin: 0; font-size: 21px; letter-spacing: -.2px; }
+  header p  { margin: 5px 0 0; color: #6b7684; font-size: 13px; max-width: 760px; }
+
+  .body { display: flex; }
+
+  
+  .side { width: 288px; flex: none; padding: 20px 20px 24px;
+          border-right: 1px solid #edf0f4; background: #fbfcfd; }
+  .lbl { font-weight: 600; font-size: 12.5px; text-transform: uppercase;
+         letter-spacing: .05em; color: #55606e; margin: 0 0 7px; }
+  .drop { border: 1.5px dashed #b9c3d0; border-radius: 8px; background: #fff;
+          padding: 16px 12px; text-align: center; color: #6b7684; font-size: 13px; }
+  .drop b { display: block; color: #1f2630; font-size: 13.5px; margin-bottom: 3px; }
+  .file { margin-top: 9px; font-size: 12px; color: #2e7d32;
+          background: #edf7ee; border: 1px solid #cfe7d1; border-radius: 5px;
+          padding: 5px 8px; text-align: left; }
+
+  .block { margin-top: 24px; }
+
+  
+  .krow { display: flex; justify-content: space-between; align-items: baseline; }
+  .kval { font-size: 25px; font-weight: 700; letter-spacing: -.5px; }
+  .kmax { font-size: 12px; color: #8a94a2; }
+  .track { position: relative; height: 5px; background: #dde3ea;
+           border-radius: 3px; margin: 14px 0 6px; }
+  .fill  { position: absolute; left: 0; top: 0; bottom: 0; width: 14%;
+           background: #1f5c99; border-radius: 3px; }
+  .knob  { position: absolute; left: 14%; top: 50%; width: 19px; height: 19px;
+           margin: -9.5px 0 0 -9.5px; background: #fff; border: 3px solid #1f5c99;
+           border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .ends  { display: flex; justify-content: space-between;
+           font-size: 11.5px; color: #8a94a2; }
+
+  table.metrics { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  table.metrics td { padding: 6px 0; border-bottom: 1px solid #edf0f4;
+                     font-variant-numeric: tabular-nums; }
+  table.metrics td:first-child { color: #55606e; font-size: 12.5px; }
+  table.metrics td:last-child  { text-align: right; font-weight: 600; }
+  .sub { display: block; font-weight: 400; font-size: 11px; color: #8a94a2; }
+
+  .bar { height: 7px; border-radius: 4px; background: #e4e9ef;
+         margin-top: 10px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 25.3%; background: #2e7d32; }
+
+  
+  .main { flex: 1; padding: 20px 26px 26px; }
+  .pair { display: flex; gap: 20px; }
+  .pane { flex: 1; }
+  .cap { display: flex; justify-content: space-between; align-items: baseline;
+         margin-bottom: 7px; }
+  .cap b  { font-size: 13.5px; }
+  .cap em { font-style: normal; font-size: 11.5px; color: #8a94a2;
+            font-variant-numeric: tabular-nums; }
+  .shot { border: 1px solid #dde3ea; border-radius: 6px; background: #f6f8fa;
+          display: flex; align-items: center; justify-content: center;
+          height: 282px; overflow: hidden; }
+  .shot img { height: 100%; image-rendering: auto; display: block; }
+
+  .tools { display: flex; gap: 8px; margin-top: 10px; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 14px;
+          border: 1px solid #dde3ea; color: #55606e; background: #fff; }
+  .chip.on { background: #1f5c99; border-color: #1f5c99; color: #fff; }
+
+  .curvebox { margin-top: 22px; }
+  .curvebox .lbl { margin-bottom: 4px; }
+  svg { display: block; }
+  .axcap { display: flex; justify-content: space-between;
+           font-size: 11.5px; color: #8a94a2; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <div class="chrome">
+    <span class="dot" style="background:#ff5f57"></span>
+    <span class="dot" style="background:#febc2e"></span>
+    <span class="dot" style="background:#28c840"></span>
+    <span class="url">kal311.shinyapps.io/pca-image-compression</span>
+  </div>
+
+  <header>
+    <h1>PCA Image Compressor</h1>
+    <p>Upload an image, choose how many principal components to keep, and see what
+       the reconstruction costs you — visually on the right, numerically on the left.</p>
+  </header>
+
+  <div class="body">
+
+    
+    <aside class="side">
+
+      <p class="lbl">1 · Image</p>
+      <div class="drop">
+        <b>Drop a file or browse</b>
+        PNG, JPEG or CSV matrix
+      </div>
+      <div class="file">✓ portrait.jpg — 220 × 180 after downsampling</div>
+
+      <div class="block">
+        <p class="lbl">2 · Components kept</p>
+        <div class="krow"><span class="kval">k = 25</span><span class="kmax">of p = 180</span></div>
+        <div class="track"><div class="fill"></div><div class="knob"></div></div>
+        <div class="ends"><span>1</span><span>180</span></div>
+      </div>
+
+      <div class="block">
+        <p class="lbl">3 · What it cost</p>
+        <table class="metrics">
+          <tr><td>Frobenius error</td>
+              <td>2.09<span class="sub">2.2% of ‖X‖<sub>F</sub></span></td></tr>
+          <tr><td>Numbers stored</td>
+              <td>10,000<span class="sub">(n + p) · k</span></td></tr>
+          <tr><td>Raw image</td>
+              <td>39,600<span class="sub">n · p</span></td></tr>
+          <tr><td>Compression ratio</td>
+              <td>25.3%<span class="sub">74.7% smaller</span></td></tr>
+        </table>
+        <div class="bar"><span></span></div>
+      </div>
+
+    </aside>
+
+    
+    <div class="main">
+
+      <div class="pair">
+        <div class="pane">
+          <div class="cap"><b>Original</b><em>220 × 180 · rank 180</em></div>
+          <div class="shot"><img src="mock_orig.png" alt=""></div>
+        </div>
+        <div class="pane">
+          <div class="cap"><b>Reconstructed · k = 25</b><em>error 2.09</em></div>
+          <div class="shot"><img src="mock_k25.png" alt=""></div>
+        </div>
+      </div>
+
+      <div class="tools">
+        <span class="chip on">Side by side</span>
+        <span class="chip">Swipe overlay</span>
+        <span class="chip">Difference map</span>
+        <span class="chip">Sync zoom</span>
+      </div>
+
+      <div class="curvebox">
+        <p class="lbl">Frobenius error across every k</p>
+        <svg width="660" height="132" viewBox="0 0 664 132">
+          <rect x="0" y="0" width="660" height="120" fill="#fbfcfd" stroke="#e4e9ef"/>
+          <g stroke="#eef1f5" stroke-width="1">
+            <line x1="0" y1="30" x2="660" y2="30"/>
+            <line x1="0" y1="60" x2="660" y2="60"/>
+            <line x1="0" y1="90" x2="660" y2="90"/>
+          </g>
+          <polyline fill="none" stroke="#1f5c99" stroke-width="2"
+            stroke-linejoin="round" points="0,5.0 7,58.5 19,69.3 26,72.0 33,73.8 41,75.2 52,76.9 59,77.8 67,78.7 74,79.6 85,80.8 93,81.5 100,82.3 108,83.0 119,84.0 126,84.6 133,85.3 141,85.9 152,86.9 159,87.5 167,88.1 174,88.7 185,89.6 193,90.1 200,90.7 208,91.3 219,92.1 226,92.6 234,93.2 241,93.7 252,94.5 260,95.0 267,95.5 274,96.0 286,96.7 293,97.2 300,97.7 308,98.2 319,98.9 326,99.4 334,99.8 341,100.3 352,100.9 360,101.4 367,101.8 374,102.2 386,102.9 393,103.3 400,103.7 408,104.1 419,104.6 426,105.0 434,105.4 441,105.8 452,106.3 460,106.7 467,107.1 475,107.4 486,108.0 493,108.3 501,108.6 508,109.0 519,109.4 527,109.8 534,110.1 541,110.4 552,110.8 560,111.2 567,111.4 575,111.7 586,112.2 593,112.5 601,112.7 608,113.0 619,113.3 627,113.6 634,113.8 641,114.1 653,114.5 660,115.0"/>
+          <line x1="85" y1="0" x2="85" y2="120" stroke="#c0392b"
+                stroke-width="1.5" stroke-dasharray="4 3"/>
+          <circle cx="85" cy="80.8" r="4.5" fill="#c0392b"/>
+          <text x="93" y="22" font-size="12" fill="#c0392b"
+                font-family="system-ui, sans-serif">you are here · k = 25</text>
+        </svg>
+        <div class="axcap"><span>k = 1</span><span>k = p = 180</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
